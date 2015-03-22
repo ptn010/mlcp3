@@ -1,1 +1,2 @@
-# mlcp3
+This project is part of course: practical machine learning on coursera. It predicts type of physical activities from data retrieved from wearable devices. 
+See details at link provided in the rmd file and html. 
