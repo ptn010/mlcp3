@@ -1,0 +1,75 @@
+---
+title: "Course Project--Practical Machine Learning"
+
+output: html_document
+---
+## Personal Physical Activity Classification
+This is a course project assigned in Coursera course-Data Specilization-Practical Machine Learning. data are drawn from the project (http://groupware.les.inf.puc-rio.br/har)
+
+###Data Processing
+```{r}
+library(caret)
+
+
+if(!file.exists("train.csv")) {
+  fileUrl <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+  download.file(fileUrl, destfile = "train.csv", mode="wb")
+}
+training<-read.table("train.csv", header = T, sep=",",na.strings= c("NA",""," "))
+
+
+if(!file.exists("test.csv")) {
+  fileUrl <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+  download.file(fileUrl, destfile = "test.csv", mode="wb")
+}
+testing<-read.table("test.csv", header = T, sep=",",na.strings= c("NA",""," "))
+```
+
+Since a considerable portion of the columns contains large proportion of missing values, and are unlikely to be valuable in our prediction model, these columns are excluded. So are the identification columns.
+
+
+```{r}
+training_NAs <- apply(training, 2, function(x) {sum(is.na(x))})
+train_clean <- training[,which(training_NAs == 0)]
+train_clean <- train_clean[8:length(train_clean)]
+```
+
+Now we divide the training data into two parts: 70% for model training and 30% for cross-validation.
+```{r}
+set.seed(1234)
+mypartition<-createDataPartition(y = train_clean$classe, p = 0.7, list = FALSE)
+mytrain<-train_clean[mypartition,]
+mytest<-train_clean[-mypartition,]
+
+```
+
+## Building Model 
+I tried out a couple methods as introduced in the lectures, and random forest does provide a much higher accuracy in prediction, and thus it is chosen here as the final model. Due to the long processing time (at least on my computer), tree number is limited at 50 (since it can still predict class with a pretty high accuracy)
+```{r,cache=TRUE}
+mod3 <- train(classe ~ ., data =
+                mytrain, method="rf", prox=T,ntree=50)
+
+mypred<-predict(mod3,mytest)
+confusionMatrix(mypred, mytest$classe)
+
+```
+As shown above, cross validation results showed that the model achieved pretty high level of accuracy in prediction: 99.4%. Since out of sample error is expected to be low, we are ready to take this model to predict the 20 cases presented in the testing set given.
+
+## Predicting test cases
+```{r}
+pred2<-predict(mod3,testing)
+print(pred2)
+```
+
+We further write down the answers in separate files using the scripted provided in the course, to be used for submission.
+```{r}
+pml_write_files=function(x){
+  n=length(x)
+  for (i in 1:n) {
+    filename=paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename, quote=FALSE, row.names=F,col.names=F)
+  }
+}
+
+pml_write_files(pred2)
+```
